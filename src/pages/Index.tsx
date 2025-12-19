@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { ImageUpload } from "@/components/ImageUpload";
-import { DiagnosisResult, type AnalysisResult } from "@/components/DiagnosisResult";
+import { DiagnosisResult } from "@/components/DiagnosisResult";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -11,114 +11,54 @@ import {
 } from "@/components/ui/select";
 import { Sparkles, Shield, Zap } from "lucide-react";
 import heroLeaf from "@/assets/hero-leaf.jpg";
-
-// Mock analysis function
-const mockAnalyzeImage = (): Promise<AnalysisResult> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const isHealthy = Math.random() > 0.5;
-
-      if (isHealthy) {
-        resolve({
-          isHealthy: true,
-          confidence: Math.floor(Math.random() * 10) + 90,
-        });
-      } else {
-        const diseases = [
-          {
-            name: "Powdery Mildew",
-            description:
-              "A fungal disease that appears as white or gray powdery spots on leaves and stems.",
-            severity: "medium" as const,
-            causes: [
-              "High humidity",
-              "Poor air circulation",
-              "Overcrowding of plants",
-            ],
-            treatments: [
-              "Remove infected leaves",
-              "Apply neem oil or fungicide",
-              "Improve air circulation",
-            ],
-          },
-          {
-            name: "Bacterial Leaf Spot",
-            description:
-              "Dark water-soaked spots with yellow halos caused by bacteria.",
-            severity: "high" as const,
-            causes: [
-              "Overhead watering",
-              "Contaminated tools",
-              "Wet conditions",
-            ],
-            treatments: [
-              "Remove infected leaves",
-              "Apply copper-based bactericide",
-              "Sanitize tools",
-            ],
-          },
-          {
-            name: "Leaf Rust",
-            description:
-              "Orange or rust-colored pustules on the underside of leaves.",
-            severity: "low" as const,
-            causes: [
-              "Cool moist weather",
-              "Extended leaf wetness",
-              "Nearby infected plants",
-            ],
-            treatments: [
-              "Apply sulfur fungicide",
-              "Remove infected leaves",
-              "Avoid wetting foliage",
-            ],
-          },
-        ];
-
-        resolve({
-          isHealthy: false,
-          confidence: Math.floor(Math.random() * 15) + 85,
-          disease: diseases[Math.floor(Math.random() * diseases.length)],
-        });
-      }
-    }, 3000);
-  });
-};
+import { mapBackendResponse, type AnalysisResult } from "@/mapper";
+import { mockAnalyzeLeaf } from "@/mockApi";
 
 const Index = () => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  // State for multiple images
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [plantType, setPlantType] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
-  const handleImageSelect = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setSelectedImage(e.target?.result as string);
-      setResult(null);
-    };
-    reader.readAsDataURL(file);
-  }, []);
+  // Handle new images
+  const handleImageSelect = (newFiles: File[]) => {
+    setFiles((prev) => [...prev, ...newFiles]);
+    setPreviews((prev) => [
+      ...prev,
+      ...newFiles.map((file) => URL.createObjectURL(file)),
+    ]);
+  };
 
-  const handleClear = useCallback(() => {
-    setSelectedImage(null);
-    setPlantType(null);
+  // Remove a single image
+  const removeImage = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Clear all images
+  const clearAll = () => {
+    setFiles([]);
+    setPreviews([]);
     setResult(null);
-  }, []);
+  };
 
+  // Analyze images
   const handleAnalyze = useCallback(async () => {
-    if (!selectedImage || !plantType) return;
+    if (!previews.length || !plantType) return;
 
     setIsAnalyzing(true);
     try {
-      const analysisResult = await mockAnalyzeImage();
-      setResult(analysisResult);
+      const backendResponse = await mockAnalyzeLeaf();
+      const mappedResult = mapBackendResponse(backendResponse);
+      setResult(mappedResult);
     } catch (error) {
       console.error("Analysis failed:", error);
     } finally {
       setIsAnalyzing(false);
     }
-  }, [selectedImage, plantType]);
+  }, [previews, plantType]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -129,7 +69,6 @@ const Index = () => {
           style={{ backgroundImage: `url(${heroLeaf})` }}
         />
         <div className="absolute inset-0 bg-linear-to-b from-background/50 via-background/80 to-background" />
-
         <div className="relative max-w-6xl mx-auto px-6 py-16 md:py-24">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
@@ -142,7 +81,8 @@ const Index = () => {
             </h1>
 
             <p className="text-lg text-muted-foreground">
-              Upload a leaf image and select the plant type for accurate AI diagnosis.
+              Upload a leaf image and select the plant type for accurate AI
+              diagnosis.
             </p>
           </div>
 
@@ -189,14 +129,16 @@ const Index = () => {
               </Select>
             </div>
 
+            {/* Image Upload */}
             <ImageUpload
               onImageSelect={handleImageSelect}
-              selectedImage={selectedImage}
-              onClear={handleClear}
+              selectedImages={previews}
+              onRemove={removeImage}
+              onClearAll={clearAll}
               isAnalyzing={isAnalyzing}
             />
 
-            {selectedImage && plantType && !isAnalyzing && (
+            {previews.length > 0 && plantType && !isAnalyzing && (
               <div className="flex justify-center animate-fade-up">
                 <Button onClick={handleAnalyze}>
                   <Sparkles className="w-5 h-5" />
@@ -206,13 +148,14 @@ const Index = () => {
             )}
           </div>
         ) : (
-          <DiagnosisResult result={result} onReset={handleClear} />
+          <DiagnosisResult result={result} onReset={clearAll} />
         )}
       </section>
 
       {/* Footer */}
       <footer className="border-t py-8 px-6 text-center text-sm text-muted-foreground">
-        LeafMD is for educational purposes only. Consult professionals for serious issues.
+        LeafMD is for educational purposes only. Consult professionals for serious
+        issues.
       </footer>
     </div>
   );

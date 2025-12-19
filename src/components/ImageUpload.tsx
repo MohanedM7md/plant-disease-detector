@@ -3,16 +3,18 @@ import { Upload, X, Leaf, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ImageUploadProps {
-  onImageSelect: (file: File) => void;
-  selectedImage: string | null;
-  onClear: () => void;
+  onImageSelect: (files: File[]) => void;
+  selectedImages: string[];
+  onRemove: (index: number) => void;
+  onClearAll: () => void;
   isAnalyzing: boolean;
 }
 
 export const ImageUpload = ({
   onImageSelect,
-  selectedImage,
-  onClear,
+  selectedImages,
+  onRemove,
+  onClearAll,
   isAnalyzing,
 }: ImageUploadProps) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -21,10 +23,12 @@ export const ImageUpload = ({
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragOver(false);
-      const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith("image/")) {
-        onImageSelect(file);
-      }
+
+      const files = Array.from(e.dataTransfer.files).filter((file) =>
+        file.type.startsWith("image/")
+      );
+
+      if (files.length) onImageSelect(files);
     },
     [onImageSelect]
   );
@@ -41,13 +45,16 @@ export const ImageUpload = ({
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        onImageSelect(file);
-      }
+      if (!e.target.files) return;
+      const files = Array.from(e.target.files).filter((file) =>
+        file.type.startsWith("image/")
+      );
+      if (files.length) onImageSelect(files);
     },
     [onImageSelect]
   );
+
+  const hasImages = selectedImages.length > 0;
 
   return (
     <div className="w-full max-w-xl mx-auto">
@@ -60,78 +67,100 @@ export const ImageUpload = ({
           isDragOver
             ? "border-accent bg-accent/10 scale-[1.02]"
             : "border-border bg-card hover:border-primary/50",
-          selectedImage ? "p-0" : "p-12",
-          isAnalyzing && "pointer-events-none"
+          isAnalyzing && "pointer-events-none",
+          !hasImages ? "p-12" : "p-4"
         )}
       >
-        {selectedImage ? (
-          <div className="relative aspect-square">
-            <img
-              src={selectedImage}
-              alt="Selected plant leaf"
-              className="w-full h-full object-cover"
-            />
-            
-            {/* Scanning overlay */}
-            {isAnalyzing && (
-              <div className="absolute inset-0 bg-foreground/20 backdrop-blur-sm">
-                <div className="absolute inset-x-0 h-1 bg-accent animate-scan" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-16 h-16 rounded-full border-4 border-accent border-t-transparent animate-spin" />
-                    <span className="text-primary-foreground font-medium text-lg bg-foreground/50 px-4 py-2 rounded-full backdrop-blur-sm">
-                      Analyzing leaf...
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Clear button */}
-            {!isAnalyzing && (
-              <button
-                onClick={onClear}
-                className="absolute top-4 right-4 p-2 rounded-full bg-foreground/80 text-background hover:bg-foreground transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        ) : (
-          <label className="flex flex-col items-center justify-center cursor-pointer gap-4">
-            <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center animate-pulse-ring">
-                <Leaf className="w-10 h-10 text-primary" />
-              </div>
+        {/* No images yet: big single upload box */}
+        {!hasImages && (
+          <label className="flex flex-col items-center justify-center gap-4 cursor-pointer">
+            <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+              <Leaf className="w-12 h-12 text-primary" />
             </div>
-            
             <div className="text-center">
-              <p className="text-lg font-medium text-foreground mb-1">
-                Upload a leaf image
-              </p>
+              <p className="text-lg font-medium">Upload leaf image</p>
               <p className="text-sm text-muted-foreground">
                 Drag & drop or click to browse
               </p>
             </div>
-
             <div className="flex gap-3 mt-2">
               <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm">
                 <Upload className="w-4 h-4" />
-                <span>Browse Files</span>
+                Browse Files
               </div>
               <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary text-secondary-foreground text-sm">
                 <Camera className="w-4 h-4" />
-                <span>Take Photo</span>
+                Take Photo
               </div>
             </div>
-
             <input
               type="file"
               accept="image/*"
+              multiple
               onChange={handleFileSelect}
               className="hidden"
             />
           </label>
+        )}
+
+        {/* At least one image: switch to grid */}
+        {hasImages && (
+          <div className="grid grid-cols-3 gap-3">
+            {selectedImages.map((img, index) => (
+              <div
+                key={index}
+                className="relative aspect-square rounded-lg overflow-hidden border"
+              >
+                <img
+                  src={img}
+                  alt={`Leaf ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {!isAnalyzing && (
+                  <button
+                    onClick={() => onRemove(index)}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {/* Add Image Button */}
+            <label
+              className={cn(
+                "flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-muted cursor-pointer aspect-square hover:bg-primary/5",
+                isAnalyzing && "pointer-events-none"
+              )}
+            >
+              <div className="flex flex-col items-center justify-center">
+                <Leaf className="w-8 h-8 text-primary mb-1" />
+                <span className="text-xs text-muted-foreground text-center">
+                  Add Image
+                </span>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </label>
+          </div>
+        )}
+
+        {/* Clear All Button */}
+        {selectedImages.length > 1 && !isAnalyzing && (
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={onClearAll}
+              className="text-sm text-muted-foreground hover:text-destructive"
+            >
+              Clear all
+            </button>
+          </div>
         )}
       </div>
     </div>
