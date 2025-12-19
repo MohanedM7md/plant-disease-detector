@@ -12,17 +12,15 @@ import {
 import { Sparkles, Shield, Zap } from "lucide-react";
 import heroLeaf from "@/assets/hero-leaf.jpg";
 import { mapBackendResponse, type AnalysisResult } from "@/mapper";
-import { mockAnalyzeLeaf } from "@/mockApi";
+import { uploadImage } from "@/services/imageServices";
 
 const Index = () => {
-  // State for multiple images
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [plantType, setPlantType] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
 
-  // Handle new images
   const handleImageSelect = (newFiles: File[]) => {
     setFiles((prev) => [...prev, ...newFiles]);
     setPreviews((prev) => [
@@ -44,25 +42,34 @@ const Index = () => {
     setResult(null);
   };
 
-  // Analyze images
-  const handleAnalyze = useCallback(async () => {
-    if (!previews.length || !plantType) return;
+const handleAnalyze = useCallback(async () => {
+  if (!files.length || !plantType) return;
 
-    setIsAnalyzing(true);
-    try {
-      const backendResponse = await mockAnalyzeLeaf();
-      const mappedResult = mapBackendResponse(backendResponse);
-      setResult(mappedResult);
-    } catch (error) {
-      console.error("Analysis failed:", error);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }, [previews, plantType]);
+  setIsAnalyzing(true);
+
+  try {
+    const formData = new FormData();
+
+    formData.append("plant_type", plantType);
+
+    files.forEach((file) => {
+      formData.append("images", file);
+    });
+
+    const backendResponse = await uploadImage(formData);
+
+    const mappedResult = mapBackendResponse(backendResponse);
+    setResult(mappedResult);
+  } catch (error) {
+    console.error("Analysis failed:", error);
+  } finally {
+    setIsAnalyzing(false);
+  }
+}, [files, plantType]);
+
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center opacity-20"
@@ -86,7 +93,6 @@ const Index = () => {
             </p>
           </div>
 
-          {/* Features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
             {[
               { icon: Zap, title: "Instant Analysis", desc: "Results in seconds" },
@@ -110,11 +116,9 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Upload Section */}
       <section className="max-w-6xl mx-auto px-6 pb-16">
         {!result ? (
           <div className="space-y-6">
-            {/* Plant Type Dropdown */}
             <div className="max-w-sm mx-auto">
               <Select value={plantType ?? ""} onValueChange={setPlantType}>
                 <SelectTrigger>
@@ -122,9 +126,11 @@ const Index = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="apple">Apple</SelectItem>
-                  <SelectItem value="grapes">Grapes</SelectItem>
+                  <SelectItem value="grape">Grapes</SelectItem>
                   <SelectItem value="strawberry">Strawberry</SelectItem>
                   <SelectItem value="potato">Potato</SelectItem>
+                  <SelectItem value="tomato">Tomato</SelectItem>
+                  <SelectItem value="bell_pepper">Bell Pepper</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -152,7 +158,6 @@ const Index = () => {
         )}
       </section>
 
-      {/* Footer */}
       <footer className="border-t py-8 px-6 text-center text-sm text-muted-foreground">
         LeafMD is for educational purposes only. Consult professionals for serious
         issues.
