@@ -22,12 +22,6 @@ export const AnalysisLoading = ({ plantType }: AnalysisLoadingProps) => {
           Our AI is examining patterns, color, and texture to detect diseases.
         </p>
       </div>
-
-      {/* Steps */}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Sparkles className="w-4 h-4 text-primary" />
-        Running deep learning model…
-      </div>
     </div>
   );
 };
