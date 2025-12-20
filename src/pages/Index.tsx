@@ -2,17 +2,12 @@ import { useState, useCallback } from "react";
 import { ImageUpload } from "@/components/ImageUpload";
 import { DiagnosisResult } from "@/components/DiagnosisResult";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Sparkles, Shield, Zap } from "lucide-react";
 import heroLeaf from "@/assets/hero-leaf.jpg";
 import { mapBackendResponse, type AnalysisResult } from "@/mapper";
 import { uploadImage } from "@/services/imageServices";
+import { AnalysisLoading } from "@/components/AnalysisLoading";
+import PlantSelector from "@/components/PlantSelector";
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -57,7 +52,6 @@ const handleAnalyze = useCallback(async () => {
     });
 
     const backendResponse = await uploadImage(formData);
-
     const mappedResult = mapBackendResponse(backendResponse);
     setResult(mappedResult);
   } catch (error) {
@@ -78,9 +72,9 @@ const handleAnalyze = useCallback(async () => {
         <div className="absolute inset-0 bg-linear-to-b from-background/50 via-background/80 to-background" />
         <div className="relative max-w-6xl mx-auto px-6 py-16 md:py-24">
           <div className="text-center max-w-3xl mx-auto mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-xl font-medium mb-6">
               <Sparkles className="w-4 h-4" />
-              <span>Plant Diagnostics</span>
+              <span>LeafMD</span>
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold mb-6">
@@ -88,16 +82,15 @@ const handleAnalyze = useCallback(async () => {
             </h1>
 
             <p className="text-lg text-muted-foreground">
-              Upload a leaf image and select the plant type for accurate AI
+              Upload a leaf image and select the plant type for accurate
               diagnosis.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
             {[
               { icon: Zap, title: "Instant Analysis", desc: "Results in seconds" },
               { icon: Shield, title: "Accurate Detection", desc: "90%+ accuracy" },
-              { icon: Sparkles, title: "Treatment Tips", desc: "Expert guidance" },
             ].map((f, i) => (
               <div
                 key={i}
@@ -117,45 +110,36 @@ const handleAnalyze = useCallback(async () => {
       </section>
 
       <section className="max-w-6xl mx-auto px-6 pb-16">
-        {!result ? (
-          <div className="space-y-6">
-            <div className="max-w-sm mx-auto">
-              <Select value={plantType ?? ""} onValueChange={setPlantType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select plant type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="apple">Apple</SelectItem>
-                  <SelectItem value="grape">Grapes</SelectItem>
-                  <SelectItem value="strawberry">Strawberry</SelectItem>
-                  <SelectItem value="potato">Potato</SelectItem>
-                  <SelectItem value="tomato">Tomato</SelectItem>
-                  <SelectItem value="bell_pepper">Bell Pepper</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+{isAnalyzing ? (
+  <AnalysisLoading plantType={plantType!} />
+) : result ? (
+  <DiagnosisResult result={result} onReset={clearAll} />
+) : (
+  <div className="space-y-6">
+    <PlantSelector
+      selectedPlant={plantType}
+      onSelect={setPlantType}
+    />
 
-            {/* Image Upload */}
-            <ImageUpload
-              onImageSelect={handleImageSelect}
-              selectedImages={previews}
-              onRemove={removeImage}
-              onClearAll={clearAll}
-              isAnalyzing={isAnalyzing}
-            />
+    <ImageUpload
+      onImageSelect={handleImageSelect}
+      selectedImages={previews}
+      onRemove={removeImage}
+      onClearAll={clearAll}
+      isAnalyzing={isAnalyzing}
+    />
 
-            {previews.length > 0 && plantType && !isAnalyzing && (
-              <div className="flex justify-center animate-fade-up">
-                <Button onClick={handleAnalyze}>
-                  <Sparkles className="w-5 h-5" />
-                  Analyze {plantType} Leaf
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <DiagnosisResult result={result} onReset={clearAll} />
-        )}
+    {previews.length > 0 && plantType && (
+      <div className="flex justify-center animate-fade-up">
+        <Button onClick={handleAnalyze}>
+          <Sparkles className="w-5 h-5" />
+          Analyze {plantType} Leaf
+        </Button>
+      </div>
+    )}
+  </div>
+)}
+
       </section>
 
       <footer className="border-t py-8 px-6 text-center text-sm text-muted-foreground">

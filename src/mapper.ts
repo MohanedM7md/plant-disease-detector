@@ -2,6 +2,7 @@ import { type BackendResponse } from "./mockApi";
 
 export interface AnalysisResult {
   isHealthy: boolean;
+  confidence: number;
   disease?: {
     name: string;
   };
@@ -14,6 +15,7 @@ export const mapBackendResponse = (
 
   return {
     isHealthy,
+    confidence: data.confidence, // keep raw
     disease: isHealthy ? undefined : { name: data.disease },
   };
 };
