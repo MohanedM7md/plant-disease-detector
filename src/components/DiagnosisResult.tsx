@@ -10,10 +10,21 @@ interface DiagnosisResultProps {
 
 export const DiagnosisResult = ({ result, onReset }: DiagnosisResultProps) => {
   const isHealthy = result.isHealthy;
+
+  // Normalize confidence (0–1 or 0–100)
   const confidencePercent =
-  result.confidence <= 1
-    ? Math.round(result.confidence * 100)
-    : Math.round(result.confidence);
+    result.confidence <= 1
+      ? Math.round(result.confidence * 100)
+      : Math.round(result.confidence);
+
+  // Confidence color logic
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence < 30) return "red";
+    if (confidence < 65) return "yellow";
+    return "green";
+  };
+
+  const confidenceColor = getConfidenceColor(confidencePercent);
 
   return (
     <div className="w-full max-w-md mx-auto space-y-8 animate-fade-up">
@@ -26,14 +37,6 @@ export const DiagnosisResult = ({ result, onReset }: DiagnosisResultProps) => {
             : "bg-gradient-to-br from-red-500/15 via-orange-500/10 to-red-400/20 border-red-500/30"
         )}
       >
-        {/* Glow */}
-        <div
-          className={cn(
-            "absolute inset-0 blur-2xl opacity-30 pointer-events-none",
-        
-          )}
-        />
-
         {/* Icon */}
         <div className="relative flex justify-center mb-4">
           <div
@@ -73,12 +76,15 @@ export const DiagnosisResult = ({ result, onReset }: DiagnosisResultProps) => {
             ? "No signs of disease were found in this leaf."
             : "The plant shows visible symptoms of disease."}
         </p>
+
         {/* Confidence */}
         <div className="mt-6 space-y-2">
           <div
             className={cn(
               "flex justify-between text-sm font-medium",
-              isHealthy ? "text-green-700" : "text-red-700"
+              confidenceColor === "green" && "text-green-700",
+              confidenceColor === "yellow" && "text-yellow-700",
+              confidenceColor === "red" && "text-red-700"
             )}
           >
             <span>Model Confidence</span>
@@ -90,11 +96,20 @@ export const DiagnosisResult = ({ result, onReset }: DiagnosisResultProps) => {
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-700",
-                isHealthy ? "bg-green-500" : "bg-red-500"
+                confidenceColor === "green" && "bg-green-500",
+                confidenceColor === "yellow" && "bg-yellow-500",
+                confidenceColor === "red" && "bg-red-500"
               )}
               style={{ width: `${confidencePercent}%` }}
             />
           </div>
+
+          {/* Low confidence warning */}
+          {confidencePercent < 30 && (
+            <p className="text-xs text-red-600 text-center mt-1">
+              Low confidence — consider uploading a clearer image.
+            </p>
+          )}
 
           <p className="text-xs text-muted-foreground text-center mt-1">
             Based on visual patterns learned from thousands of leaf images
@@ -108,11 +123,6 @@ export const DiagnosisResult = ({ result, onReset }: DiagnosisResultProps) => {
             <span>{result.disease.name}</span>
           </div>
         )}
-
-        {/* Confidence Badge */}
-        <div className="mt-6 flex justify-center">
- 
-        </div>
       </div>
 
       {/* Action */}
