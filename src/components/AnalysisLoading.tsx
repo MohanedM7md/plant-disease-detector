@@ -19,7 +19,7 @@ export const AnalysisLoading = ({ plantType }: AnalysisLoadingProps) => {
           Analyzing {plantType} Leaf
         </h3>
         <p className="text-muted-foreground text-sm max-w-xs">
-          Our AI is examining patterns, color, and texture to detect diseases.
+          Our classifier is examining patterns, color, and texture to detect diseases.
         </p>
       </div>
     </div>
